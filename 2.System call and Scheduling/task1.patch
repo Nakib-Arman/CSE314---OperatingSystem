@@ -1,0 +1,438 @@
+diff --git a/.vscode/settings.json b/.vscode/settings.json
+new file mode 100644
+index 0000000..7c76a15
+--- /dev/null
++++ b/.vscode/settings.json
+@@ -0,0 +1,8 @@
++{
++    "files.associations": {
++        "types.h": "c",
++        "fcntl.h": "c",
++        "syscall.h": "c",
++        "defs.h": "c"
++    }
++}
+\ No newline at end of file
+diff --git a/Makefile b/Makefile
+index f8c820e..66f3f54 100644
+--- a/Makefile
++++ b/Makefile
+@@ -139,6 +139,8 @@ UPROGS=\
+ 	$U/_grind\
+ 	$U/_wc\
+ 	$U/_zombie\
++	$U/_history\
++	$U/_dummyproc\
+ 
+ fs.img: mkfs/mkfs README $(UPROGS)
+ 	mkfs/mkfs fs.img README $(UPROGS)
+diff --git a/kernel/defs.h b/kernel/defs.h
+index d1b6bb9..ec71adb 100644
+--- a/kernel/defs.h
++++ b/kernel/defs.h
+@@ -106,6 +106,8 @@ void            yield(void);
+ int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
+ int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
+ void            procdump(void);
++void            initstat(void);
++int             settickets(void);
+ 
+ // swtch.S
+ void            swtch(struct context*, struct context*);
+diff --git a/kernel/main.c b/kernel/main.c
+index f0d3171..22f2e9c 100644
+--- a/kernel/main.c
++++ b/kernel/main.c
+@@ -3,9 +3,36 @@
+ #include "memlayout.h"
+ #include "riscv.h"
+ #include "defs.h"
++#include "syscall_stat.h"
+ 
+ volatile static int started = 0;
+ 
++struct syscall_stat syscall_array[sys_call_number] = {
++  {"fork",0,0},
++  {"exit",0,0},
++  {"wait",0,0},
++  {"pipe",0,0},
++  {"read",0,0},
++  {"kill",0,0},
++  {"exec",0,0},
++  {"fstat",0,0},
++  {"chdir",0,0},
++  {"dup",0,0},
++  {"getpid",0,0},
++  {"sbrk",0,0},
++  {"sleep",0,0},
++  {"uptime",0,0},
++  {"open",0,0},
++  {"write",0,0},
++  {"mknod",0,0},
++  {"unlink",0,0},
++  {"link",0,0},
++  {"mkdir",0,0},
++  {"close",0,0},
++  {"history",0,0},
++  {"settickets",0,0},
++};
++
+ // start() jumps here in supervisor mode on all CPUs.
+ void
+ main()
+@@ -30,6 +57,7 @@ main()
+     virtio_disk_init(); // emulated hard disk
+     userinit();      // first user process
+     __sync_synchronize();
++    initstat();
+     started = 1;
+   } else {
+     while(started == 0)
+diff --git a/kernel/param.h b/kernel/param.h
+index 80ec6d3..27716a0 100644
+--- a/kernel/param.h
++++ b/kernel/param.h
+@@ -12,4 +12,5 @@
+ #define FSSIZE       2000  // size of file system in blocks
+ #define MAXPATH      128   // maximum file path name
+ #define USERSTACK    1     // user stack pages
++#define DEFAULT_TICKET_COUNT 10
+ 
+diff --git a/kernel/proc.c b/kernel/proc.c
+index 130d9ce..af2ca1d 100644
+--- a/kernel/proc.c
++++ b/kernel/proc.c
+@@ -125,6 +125,8 @@ found:
+   p->pid = allocpid();
+   p->state = USED;
+ 
++  p->original_tickets = DEFAULT_TICKET_COUNT;
++
+   // Allocate a trapframe page.
+   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
+     freeproc(p);
+@@ -693,3 +695,31 @@ procdump(void)
+     printf("\n");
+   }
+ }
++
++
++
++struct spinlock statlock;
++
++void 
++initstat(void)
++{
++    initlock(&statlock,"statlock");
++}
++
++
++int
++settickets(void)
++{
++  // printf("Hello from settickets inside proc.c\n");
++  struct proc *p = myproc();
++  int tickets;
++  argint(0, &tickets);
++  if( tickets == -1){
++    p->original_tickets = 10;
++    p->current_tickets = 10;
++    return -1;
++  }
++  p->original_tickets = tickets;
++  p->current_tickets = tickets;
++  return 0;
++}
+\ No newline at end of file
+diff --git a/kernel/proc.h b/kernel/proc.h
+index d021857..631e211 100644
+--- a/kernel/proc.h
++++ b/kernel/proc.h
+@@ -91,6 +91,9 @@ struct proc {
+   int killed;                  // If non-zero, have been killed
+   int xstate;                  // Exit status to be returned to parent's wait
+   int pid;                     // Process ID
++  
++  int original_tickets;
++  int current_tickets;
+ 
+   // wait_lock must be held when using this:
+   struct proc *parent;         // Parent process
+diff --git a/kernel/syscall.c b/kernel/syscall.c
+index ed65409..a99d9a5 100644
+--- a/kernel/syscall.c
++++ b/kernel/syscall.c
+@@ -6,6 +6,7 @@
+ #include "proc.h"
+ #include "syscall.h"
+ #include "defs.h"
++#include "syscall_stat.h"
+ 
+ // Fetch the uint64 at addr from the current process.
+ int
+@@ -101,6 +102,8 @@ extern uint64 sys_unlink(void);
+ extern uint64 sys_link(void);
+ extern uint64 sys_mkdir(void);
+ extern uint64 sys_close(void);
++extern uint64 sys_history(void);
++extern uint64 sys_settickets(void);
+ 
+ // An array mapping syscall numbers from syscall.h
+ // to the function that handles the system call.
+@@ -126,6 +129,8 @@ static uint64 (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_history] sys_history,
++[SYS_settickets] sys_settickets,
+ };
+ 
+ void
+@@ -134,11 +139,27 @@ syscall(void)
+   int num;
+   struct proc *p = myproc();
+ 
++  uint start_time,end_time;
++
+   num = p->trapframe->a7;
+   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+     // Use num to lookup the system call function for num, call it,
+     // and store its return value in p->trapframe->a0
++    acquire(&tickslock);
++    start_time = ticks;
++    release(&tickslock);
++
+     p->trapframe->a0 = syscalls[num]();
++
++    acquire(&tickslock);
++    end_time = ticks;
++    release(&tickslock);
++
++    acquire(&statlock);
++    syscall_array[num-1].count++;
++    syscall_array[num-1].accum_time+=(end_time-start_time);
++    release(&statlock);
++
+   } else {
+     printf("%d %s: unknown sys call %d\n",
+             p->pid, p->name, num);
+diff --git a/kernel/syscall.h b/kernel/syscall.h
+index bc5f356..4263d71 100644
+--- a/kernel/syscall.h
++++ b/kernel/syscall.h
+@@ -20,3 +20,5 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_history 22
++#define SYS_settickets 23
+diff --git a/kernel/syscall_stat.h b/kernel/syscall_stat.h
+new file mode 100644
+index 0000000..dafc194
+--- /dev/null
++++ b/kernel/syscall_stat.h
+@@ -0,0 +1,19 @@
++
++struct syscall_stat
++{
++    char syscall_name [16];
++    int count ;
++    int accum_time ;
++};
++
++#define sys_call_number 23
++
++extern struct syscall_stat syscall_array[sys_call_number];
++
++extern struct spinlock statlock;
++
++// void 
++// initstat(void)
++// {
++//     initlock(&statlock,"statlock");
++// }
+\ No newline at end of file
+diff --git a/kernel/sysproc.c b/kernel/sysproc.c
+index 3b4d5bd..90d5b45 100644
+--- a/kernel/sysproc.c
++++ b/kernel/sysproc.c
+@@ -5,6 +5,7 @@
+ #include "memlayout.h"
+ #include "spinlock.h"
+ #include "proc.h"
++#include "syscall_stat.h"
+ 
+ uint64
+ sys_exit(void)
+@@ -12,7 +13,7 @@ sys_exit(void)
+   int n;
+   argint(0, &n);
+   exit(n);
+-  return 0;  // not reached
++  return 0; // not reached
+ }
+ 
+ uint64
+@@ -43,7 +44,7 @@ sys_sbrk(void)
+ 
+   argint(0, &n);
+   addr = myproc()->sz;
+-  if(growproc(n) < 0)
++  if (growproc(n) < 0)
+     return -1;
+   return addr;
+ }
+@@ -55,12 +56,14 @@ sys_sleep(void)
+   uint ticks0;
+ 
+   argint(0, &n);
+-  if(n < 0)
++  if (n < 0)
+     n = 0;
+   acquire(&tickslock);
+   ticks0 = ticks;
+-  while(ticks - ticks0 < n){
+-    if(killed(myproc())){
++  while (ticks - ticks0 < n)
++  {
++    if (killed(myproc()))
++    {
+       release(&tickslock);
+       return -1;
+     }
+@@ -91,3 +94,37 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++uint64
++sys_history()
++{
++  uint64 addr;
++  argaddr(1, &addr);
++  uint64 sys_call_index;
++  argaddr(0, &sys_call_index);
++
++  if(sys_call_index <= 0 || sys_call_index > sys_call_number) {
++    return -1;
++  }
++
++  // struct syscall_stat curr_sycall;
++  // copyin(myproc()->pagetable, (char *)&sys_call_index, addr2, sizeof(int));
++  // printf("hello\n");
++  // printf("%lu\n",sys_call_index);
++  // for(int i = 0 ;i<5;i++){
++  //   printf("before change system call %d\n",curr_sycall[i]);
++  // }
++  // user_value[0] = 10;
++  // strncpy(curr_sycall.syscall_name,"fork",4);
++  // curr_sycall.count++;
++  // curr_sycall.accum_time += 2;
++  copyout(myproc()->pagetable, addr, (char *)&syscall_array[sys_call_index-1], sizeof(syscall_array[sys_call_index-1]));
++  // printf("after change system call %d\n",user_value);
++  return 0;
++}
++
++uint64
++sys_settickets(void)
++{
++  return settickets();
++}
+\ No newline at end of file
+diff --git a/user/dummyproc.c b/user/dummyproc.c
+new file mode 100644
+index 0000000..37e99c0
+--- /dev/null
++++ b/user/dummyproc.c
+@@ -0,0 +1,18 @@
++#include "kernel/types.h"
++#include "kernel/fcntl.h"
++#include "user/user.h"
++
++int main(int argc, char* argv[])
++{
++    int tickets;
++    if(argc<2){
++        tickets = -1;
++    }
++    else {
++        tickets = atoi(argv[1]);
++    }
++    int a = settickets(tickets);
++    if (a == -1) {
++        printf("Tickets set to default value\n");
++    }
++}
+\ No newline at end of file
+diff --git a/user/history.c b/user/history.c
+new file mode 100644
+index 0000000..1446d90
+--- /dev/null
++++ b/user/history.c
+@@ -0,0 +1,37 @@
++#include "kernel/types.h"
++#include "kernel/fcntl.h"
++#include "user/user.h"
++
++int main(int argc, char* argv[])
++{
++    // struct syscall_stat new_struct;
++    struct syscall_stat sys_call;
++    // printf("printing history...\n");
++    if(argc<2){
++        for(int i=0;i<sys_call_number;i++){
++            history(i+1,&sys_call);
++            printf("%d: syscall: %s, #: %d, time: %d\n",i+1,sys_call.syscall_name,sys_call.count,sys_call.accum_time);
++        }
++    }
++    else{
++        int a = history(atoi(argv[1]),&sys_call);
++        if (a == -1) {
++            printf("Invalid system call number\n");
++        }
++        else{
++            printf("%d: syscall: %s, #: %d, time: %d\n",atoi(argv[1]),sys_call.syscall_name,sys_call.count,sys_call.accum_time);
++        }
++    }
++    // history(16,&sys_call);
++    // printf("Returned from system call %d\n",b);
++    // printf("After system call %d\n",a);
++    // for(int i = 0 ;i<5;i++){
++    //     printf("After system call %d\n",a[i]);
++    // }
++    //printf("%c\n",new_struct.syscall_name);
++    // printf("%s\n",sys_call.syscall_name);
++    // printf("%d\n",sys_call.count);
++    // printf("%d\n",sys_call.accum_time);
++
++    return 0;
++}
+\ No newline at end of file
+diff --git a/user/user.h b/user/user.h
+index f16fe27..6f56acd 100644
+--- a/user/user.h
++++ b/user/user.h
+@@ -1,3 +1,4 @@
++#include "kernel/syscall_stat.h"
+ struct stat;
+ 
+ // system calls
+@@ -22,6 +23,8 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++int history(int,struct syscall_stat*);
++int settickets(int);
+ 
+ // ulib.c
+ int stat(const char*, struct stat*);
+diff --git a/user/usys.pl b/user/usys.pl
+index 01e426e..1458b24 100755
+--- a/user/usys.pl
++++ b/user/usys.pl
+@@ -36,3 +36,5 @@ entry("getpid");
+ entry("sbrk");
+ entry("sleep");
+ entry("uptime");
++entry("history");
++entry("settickets");
