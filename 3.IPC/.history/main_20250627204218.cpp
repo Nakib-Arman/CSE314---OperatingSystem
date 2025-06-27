@@ -188,7 +188,7 @@ void* staff(void* arg)
         pthread_mutex_unlock(&rw_mutex);
         int total_operations = ceil(N/static_cast<float> (M));
         if(current_operation == total_operations) break;
-        usleep((get_random_number() % 10)*SLEEP_MULTIPLIER);
+        usleep((get_random_number() % 20)*SLEEP_MULTIPLIER);
     }
     return NULL;
 }
@@ -252,14 +252,10 @@ int main()
 {
     cin>>N>>M;
     cin>>x>>y;
-    if(N%M != 0){
-        cout<<"Wrong Input"<<endl;
-        return -1;
-    }
     pthread_t phase1_threads[N];
     initialize ();
-    pthread_create(&staff1,&staff_attr,staff,&staff1_id);
-    pthread_create(&staff2,&staff_attr,staff,&staff2_id);
+    pthread_create(&staff1,NULL,staff,&staff1_id);
+    pthread_create(&staff2,NULL,staff,&staff2_id);
     
     int operative_count = N;
     bool started[N]= {false};
@@ -277,6 +273,5 @@ int main()
         pthread_join(phase1_threads[i],NULL);
     }
     pthread_join(staff1,NULL);
-    pthread_join(staff2,NULL);
     return 0;
 }

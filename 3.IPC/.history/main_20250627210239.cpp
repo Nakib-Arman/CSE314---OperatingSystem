@@ -252,10 +252,6 @@ int main()
 {
     cin>>N>>M;
     cin>>x>>y;
-    if(N%M != 0){
-        cout<<"Wrong Input"<<endl;
-        return -1;
-    }
     pthread_t phase1_threads[N];
     initialize ();
     pthread_create(&staff1,&staff_attr,staff,&staff1_id);
