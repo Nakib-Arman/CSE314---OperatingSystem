@@ -114,6 +114,7 @@ pthread_mutex_t rw_mutex,rw_critical;
 int rc,operations_completed;
 pthread_t staff1,staff2;
 int staff1_id = 1, staff2_id = 2;
+pthread_attr_t staff_attr, operative_attr;
 
 void initialize() {
     for (int i=0;i<4;i++){
@@ -245,8 +246,8 @@ int main()
     }
     pthread_t phase1_threads[N];
     initialize ();
-    pthread_create(&staff1,NULL,staff,&staff1_id);
-    pthread_create(&staff2,NULL,staff,&staff2_id);
+    pthread_create(&staff1,&staff_attr,staff,&staff1_id);
+    pthread_create(&staff2,&staff_attr,staff,&staff2_id);
     
     int operative_count = N;
     bool started[N]= {false};
@@ -255,7 +256,7 @@ int main()
         int random_operative = get_random_number() % N;
         if (!started[random_operative]) {
             started[random_operative] = true;
-            pthread_create(&phase1_threads[random_operative],NULL, document_recreation, (void *)operatives[random_operative]);
+            pthread_create(&phase1_threads[random_operative],&operative_attr, document_recreation, (void *)operatives[random_operative]);
             operative_count--;
             usleep(1000);
         }

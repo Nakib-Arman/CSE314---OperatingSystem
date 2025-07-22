@@ -114,6 +114,7 @@ pthread_mutex_t rw_mutex,rw_critical;
 int rc,operations_completed;
 pthread_t staff1,staff2;
 int staff1_id = 1, staff2_id = 2;
+pthread_attr_t staff_attr, operative_attr;
 
 void initialize() {
     for (int i=0;i<4;i++){

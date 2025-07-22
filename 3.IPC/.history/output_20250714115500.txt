@@ -1,0 +1,60 @@
+Intelligence Staff 1 began reviewing logbook at time 0. Operations completed = 0
+Intelligence Staff 2 began reviewing logbook at time 0. Operations completed = 0
+Operative 1 has arrived at typewriting station at time 0
+Operative 2 has arrived at typewriting station at time 1
+Operative 3 has arrived at typewriting station at time 2
+Intelligence Staff 1 began reviewing logbook at time 3. Operations completed = 0
+Intelligence Staff 2 began reviewing logbook at time 3. Operations completed = 0
+Operative 10 has arrived at typewriting station at time 3
+Operative 8 has arrived at typewriting station at time 5
+Intelligence Staff 2 began reviewing logbook at time 5. Operations completed = 0
+Operative 11 has arrived at typewriting station at time 6
+Operative 15 has arrived at typewriting station at time 7
+Operative 6 has arrived at typewriting station at time 8
+Operative 13 has arrived at typewriting station at time 10
+Operative 1 has completed document recreation at time 10
+Intelligence Staff 1 began reviewing logbook at time 11. Operations completed = 0
+Operative 2 has completed document recreation at time 11
+Operative 4 has arrived at typewriting station at time 11
+Operative 3 has completed document recreation at time 12
+Operative 7 has arrived at typewriting station at time 12
+Intelligence Staff 1 began reviewing logbook at time 13. Operations completed = 0
+Operative 12 has arrived at typewriting station at time 14
+Intelligence Staff 2 began reviewing logbook at time 14. Operations completed = 0
+Operative 8 has completed document recreation at time 15
+Operative 5 has arrived at typewriting station at time 15
+Intelligence Staff 1 began reviewing logbook at time 16. Operations completed = 0
+Operative 14 has arrived at typewriting station at time 16
+Operative 9 has arrived at typewriting station at time 18
+Intelligence Staff 1 began reviewing logbook at time 18. Operations completed = 0
+Operative 13 has completed document recreation at time 20
+Operative 10 has completed document recreation at time 21
+Intelligence Staff 2 began reviewing logbook at time 22. Operations completed = 0
+Operative 11 has completed document recreation at time 22
+Intelligence Staff 1 began reviewing logbook at time 24. Operations completed = 0
+Intelligence Staff 1 began reviewing logbook at time 25. Operations completed = 0
+Operative 4 has completed document recreation at time 25
+Intelligence Staff 1 began reviewing logbook at time 28. Operations completed = 0
+Operative 5 has completed document recreation at time 30
+Unit 1 has completed document recreation phase at time 30
+Operative 6 has completed document recreation at time 31
+Intelligence Staff 2 began reviewing logbook at time 31. Operations completed = 0
+Operative 15 has completed document recreation at time 32
+Unit 1 has completed intelligence distribution at time 33
+Operative 12 has completed document recreation at time 35
+Intelligence Staff 1 began reviewing logbook at time 35. Operations completed = 1
+Operative 9 has completed document recreation at time 40
+Intelligence Staff 2 began reviewing logbook at time 40. Operations completed = 1
+Operative 14 has completed document recreation at time 41
+Unit 3 has completed document recreation phase at time 41
+Intelligence Staff 2 began reviewing logbook at time 42. Operations completed = 1
+Intelligence Staff 1 began reviewing logbook at time 42. Operations completed = 1
+Operative 7 has completed document recreation at time 42
+Unit 2 has completed document recreation phase at time 42
+Intelligence Staff 1 began reviewing logbook at time 43. Operations completed = 1
+Intelligence Staff 1 began reviewing logbook at time 43. Operations completed = 1
+Unit 3 has completed intelligence distribution at time 44
+Intelligence Staff 2 began reviewing logbook at time 47. Operations completed = 2
+Unit 2 has completed intelligence distribution at time 47
+Intelligence Staff 1 began reviewing logbook at time 52. Operations completed = 3
+Intelligence Staff 2 began reviewing logbook at time 56. Operations completed = 3

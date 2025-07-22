@@ -114,6 +114,7 @@ pthread_mutex_t rw_mutex,rw_critical;
 int rc,operations_completed;
 pthread_t staff1,staff2;
 int staff1_id = 1, staff2_id = 2;
+// pthread_attr_t staff_attr, operative_attr;
 
 void initialize() {
     for (int i=0;i<4;i++){
@@ -189,7 +190,7 @@ void logbook_entry(Unit* unit)
     operations_completed++;
     cout<<"Unit "<<unit->getID()<<" has completed intelligence distribution at time "<<to_string(get_time())<<endl;
     // pthread_create(&staff2,NULL,staff_read,&staff2_id);
-    // pthread_detach(staff2);
+    // pthread_detach(staff2);g++
     pthread_mutex_unlock(&output_lock);
     pthread_mutex_unlock(&rw_critical);
 }

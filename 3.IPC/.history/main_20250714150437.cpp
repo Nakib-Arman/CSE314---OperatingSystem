@@ -114,6 +114,7 @@ pthread_mutex_t rw_mutex,rw_critical;
 int rc,operations_completed;
 pthread_t staff1,staff2;
 int staff1_id = 1, staff2_id = 2;
+pthread_attr_t staff_attr, operative_attr;
 
 void initialize() {
     for (int i=0;i<4;i++){
@@ -137,6 +138,18 @@ void initialize() {
     rc = 0;
     operations_completed = 0;
 
+    struct sched_param param_staff,param_operative;
+    pthread_attr_init(&staff_attr);
+    pthread_attr_setschedpolicy(&staff_attr, SCHED_RR);
+    param_staff.sched_priority = 20;
+    pthread_attr_setschedparam(&staff_attr, &param_staff);
+    pthread_attr_setinheritsched(&staff_attr, PTHREAD_EXPLICIT_SCHED);
+
+    pthread_attr_init(&operative_attr);
+    pthread_attr_setschedpolicy(&operative_attr, SCHED_RR);
+    param_operative.sched_priority = 10;
+    pthread_attr_setschedparam(&operative_attr, &param_operative);
+    pthread_attr_setinheritsched(&operative_attr, PTHREAD_EXPLICIT_SCHED);
 }
 
 // void* staff_read(void* arg)
@@ -245,8 +258,8 @@ int main()
     }
     pthread_t phase1_threads[N];
     initialize ();
-    pthread_create(&staff1,NULL,staff,&staff1_id);
-    pthread_create(&staff2,NULL,staff,&staff2_id);
+    pthread_create(&staff1,&staff_attr,staff,&staff1_id);
+    pthread_create(&staff2,&staff_attr,staff,&staff2_id);
     
     int operative_count = N;
     bool started[N]= {false};
@@ -255,7 +268,7 @@ int main()
         int random_operative = get_random_number() % N;
         if (!started[random_operative]) {
             started[random_operative] = true;
-            pthread_create(&phase1_threads[random_operative],NULL, document_recreation, (void *)operatives[random_operative]);
+            pthread_create(&phase1_threads[random_operative],&operative_attr, document_recreation, (void *)operatives[random_operative]);
             operative_count--;
             usleep(1000);
         }
